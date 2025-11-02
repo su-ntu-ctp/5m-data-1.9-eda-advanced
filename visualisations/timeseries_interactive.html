@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Time Series Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .explanation {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+
+        .explanation h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .timeline-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+        }
+
+        .timeline {
+            position: relative;
+            height: 80px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .timeline-bar {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            right: 5%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transform: translateY(-50%);
+        }
+
+        .date-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #667eea;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .date-marker:hover {
+            transform: translate(-50%, -50%) scale(1.5);
+            background: #764ba2;
+            z-index: 10;
+        }
+
+        .date-marker.selected {
+            background: #f5576c;
+            transform: translate(-50%, -50%) scale(1.8);
+            z-index: 5;
+        }
+
+        .date-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #666;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart {
+            position: relative;
+            height: 300px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .bar {
+            position: absolute;
+            bottom: 20px;
+            width: 20px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .bar:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .bar-label {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) rotate(-45deg);
+            font-size: 10px;
+            color: #666;
+            white-space: nowrap;
+            transform-origin: left bottom;
+        }
+
+        .output-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #28a745;
+            min-height: 100px;
+        }
+
+        .output-box h4 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .output-box pre {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #dee2e6;
+            line-height: 1.6;
+        }
+
+        .code-example {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .code-example .keyword {
+            color: #c678dd;
+        }
+
+        .code-example .string {
+            color: #98c379;
+        }
+
+        .code-example .number {
+            color: #d19a66;
+        }
+
+        .code-example .comment {
+            color: #5c6370;
+            font-style: italic;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .comparison-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .comparison-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .rolling-window {
+            position: relative;
+            height: 200px;
+            margin: 30px 0;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .data-point {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .data-point.in-window {
+            background: #f5576c;
+            transform: scale(1.3);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .window-highlight {
+            position: absolute;
+            background: rgba(245, 87, 108, 0.1);
+            border: 3px dashed #f5576c;
+            border-radius: 10px;
+            transition: all 0.5s ease;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 2px solid #333;
+        }
+
+        .frequency-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .freq-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .freq-box:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .freq-box h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .freq-bars {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            height: 100px;
+            margin: 15px 0;
+        }
+
+        .freq-bar {
+            width: 15px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .slider-container {
+            margin: 30px 0;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .animate-pulse {
+            animation: pulse 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Interactive Time Series Visualization</h1>
+        <p class="subtitle">Master pandas datetime operations with interactive examples</p>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('basics')">📚 Basics</button>
+            <button class="tab" onclick="switchTab('slicing')">🔪 Slicing</button>
+            <button class="tab" onclick="switchTab('resampling')">🔄 Resampling</button>
+            <button class="tab" onclick="switchTab('rolling')">📊 Rolling Windows</button>
+        </div>
+
+        <!-- Tab 1: Basics -->
+        <div id="basics" class="tab-content active">
+            <div class="explanation">
+                <h3>💡 What are Time Series?</h3>
+                <p>
+                    Time series data is any data indexed by time. Pandas provides powerful tools for working with dates and times,
+                    making it easy to analyze temporal patterns, trends, and seasonality in your data.
+                </p>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-box">
+                    <h3>🕐 DatetimeIndex</h3>
+                    <p style="margin: 15px 0; text-align: left;">
+                        <strong>What is it?</strong><br>
+                        An index specifically designed for datetime values. It's automatically created when you use datetime objects as an index.
+                    </p>
+                    <div class="code-example">
+dates = [<span class="keyword">datetime</span>(<span class="number">2011</span>, <span class="number">1</span>, <span class="number">2</span>),
+         <span class="keyword">datetime</span>(<span class="number">2011</span>, <span class="number">1</span>, <span class="number">5</span>)]
+ts = pd.<span class="keyword">Series</span>(data, index=dates)
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h3>⏰ Timestamp</h3>
+                    <p style="margin: 15px 0; text-align: left;">
+                        <strong>What is it?</strong><br>
+                        A single point in time, similar to Python's datetime object but with more functionality for pandas operations.
+                    </p>
+                    <div class="code-example">
+ts = pd.<span class="keyword">Timestamp</span>(<span class="string">'2011-01-07'</span>)
+<span class="comment"># Equivalent to datetime(2011, 1, 7)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>📆 Creating Date Ranges</h3>
+                <p>Use <code>pd.date_range()</code> to generate sequences of dates:</p>
+            </div>
+
+            <div class="timeline-container">
+                <h4 style="text-align: center; color: #667eea; margin-bottom: 20px;">
+                    Interactive Timeline: January 2011
+                </h4>
+                <div class="timeline" id="basicTimeline">
+                    <div class="timeline-bar"></div>
+                </div>
+                <p style="text-align: center; color: #666; margin-top: 15px;">
+                    <strong>Hover over the date markers</strong> to see timestamps
+                </p>
+            </div>
+
+            <div class="code-example">
+<span class="comment"># Generate daily dates</span>
+dates = pd.<span class="keyword">date_range</span>(<span class="string">'2011-01-01'</span>, periods=<span class="number">31</span>, freq=<span class="string">'D'</span>)
+
+<span class="comment"># Common frequencies:</span>
+<span class="comment"># 'D' = Daily, 'W' = Weekly, 'M' = Month end</span>
+<span class="comment"># 'MS' = Month start, 'Y' = Year end, 'H' = Hourly</span>
+            </div>
+
+            <div class="explanation">
+                <h3>🔍 to_datetime() - Parsing Dates</h3>
+                <p>Convert various date formats into pandas datetime objects:</p>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">String Formats</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+dates = [<span class="string">"2011-07-06 12:00:00"</span>,
+         <span class="string">"2011-08-06"</span>]
+pd.<span class="keyword">to_datetime</span>(dates)
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Handling Missing Values</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+dates = [<span class="string">"2011-07-06"</span>, <span class="keyword">None</span>]
+idx = pd.<span class="keyword">to_datetime</span>(dates)
+<span class="comment"># Missing = NaT (Not a Time)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="output-box">
+                <h4>📊 Key Concepts:</h4>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li>✅ <strong>DatetimeIndex</strong> - Time-aware index for Series/DataFrame</li>
+                    <li>✅ <strong>Timestamp</strong> - Individual time points</li>
+                    <li>✅ <strong>date_range</strong> - Generate sequences of dates</li>
+                    <li>✅ <strong>to_datetime</strong> - Parse various date formats</li>
+                    <li>✅ <strong>NaT</strong> - "Not a Time" (like NaN for dates)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tab 2: Slicing -->
+        <div id="slicing" class="tab-content">
+            <div class="explanation">
+                <h3>🔪 Time-based Slicing</h3>
+                <p>
+                    Pandas allows you to slice time series data using date strings, making it incredibly easy to select data
+                    for specific time periods - by year, month, or specific date ranges!
+                </p>
+            </div>
+
+            <div class="timeline-container">
+                <h4 style="text-align: center; color: #667eea; margin-bottom: 20px;">
+                    Interactive Timeline: 2000-2002 (Daily Data)
+                </h4>
+                <div class="controls">
+                    <button class="btn-primary" onclick="sliceYear()">
+                        Select Year: <code>ts['2001']</code>
+                    </button>
+                    <button class="btn-secondary" onclick="sliceMonth()">
+                        Select Month: <code>ts['2001-05']</code>
+                    </button>
+                    <button class="btn-success" onclick="sliceRange()">
+                        Select Range: <code>ts['2001-05':'2001-08']</code>
+                    </button>
+                    <button class="btn-primary" onclick="resetSlicing()">
+                        🔄 Reset
+                    </button>
+                </div>
+                <div class="chart" id="slicingChart"></div>
+            </div>
+
+            <div class="output-box" id="slicingOutput">
+                <h4>📊 Selection Result:</h4>
+                <pre id="slicingText">Click a button above to see slicing in action...</pre>
+            </div>
+
+            <div class="explanation">
+                <h3>🎯 Indexing Methods</h3>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">By String</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Most convenient!</span>
+ts[<span class="string">'2001'</span>]         <span class="comment"># Entire year</span>
+ts[<span class="string">'2001-05'</span>]      <span class="comment"># Entire month</span>
+ts[<span class="string">'2001-05-15'</span>]   <span class="comment"># Specific day</span>
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">By Timestamp</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+ts[pd.<span class="keyword">Timestamp</span>(<span class="string">'2001-05-15'</span>)]
+
+<span class="comment"># Or datetime object</span>
+ts[<span class="keyword">datetime</span>(<span class="number">2001</span>, <span class="number">5</span>, <span class="number">15</span>)]
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Slicing Ranges</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># From date onwards</span>
+ts[<span class="string">'2001-05'</span>:]
+
+<span class="comment"># Between dates</span>
+ts[<span class="string">'2001-05'</span>:<span class="string">'2001-08'</span>]
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Boolean Indexing</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Complex conditions</span>
+mask = (ts.index.year == <span class="number">2001</span>) & \
+       (ts.index.month > <span class="number">5</span>)
+ts[mask]
+                    </div>
+                </div>
+            </div>
+
+            <div class="output-box">
+                <h4>💡 Pro Tips:</h4>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li>✅ Partial string indexing works at any level (year, month, day)</li>
+                    <li>✅ Slicing is inclusive on both ends for datetime indexes</li>
+                    <li>✅ Mix and match formats - pandas is smart about parsing!</li>
+                    <li>✅ Use <code>.loc[]</code> for explicit label-based indexing</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tab 3: Resampling -->
+        <div id="resampling" class="tab-content">
+            <div class="explanation">
+                <h3>🔄 Resampling Time Series</h3>
+                <p>
+                    Resampling changes the frequency of your time series. <strong>Upsampling</strong> increases frequency (e.g., daily → hourly),
+                    while <strong>downsampling</strong> decreases frequency (e.g., daily → monthly).
+                </p>
+            </div>
+
+            <div class="frequency-demo" id="freqDemo">
+                <div class="freq-box">
+                    <h4>📅 Daily (Original)</h4>
+                    <div class="freq-bars" id="dailyBars"></div>
+                    <p style="color: #666; font-size: 14px; margin-top: 10px;">31 data points</p>
+                </div>
+
+                <div class="freq-box">
+                    <h4>📆 Weekly (Downsample)</h4>
+                    <div class="freq-bars" id="weeklyBars"></div>
+                    <p style="color: #666; font-size: 14px; margin-top: 10px;">~4 data points</p>
+                </div>
+
+                <div class="freq-box">
+                    <h4>📊 Monthly (Downsample)</h4>
+                    <div class="freq-bars" id="monthlyBars"></div>
+                    <p style="color: #666; font-size: 14px; margin-top: 10px;">1 data point</p>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" onclick="demonstrateUpsample()">
+                    📈 Upsample (Daily → Hourly)
+                </button>
+                <button class="btn-secondary" onclick="demonstrateDownsample()">
+                    📉 Downsample (Daily → Monthly)
+                </button>
+                <button class="btn-success" onclick="demonstrateFillMethods()">
+                    🎨 Fill Methods
+                </button>
+            </div>
+
+            <div class="output-box" id="resampleOutput">
+                <h4>📊 Resampling Result:</h4>
+                <pre id="resampleText">Click a button above to see resampling in action...</pre>
+            </div>
+
+            <div class="explanation">
+                <h3>⚙️ Resampling Methods</h3>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Downsampling (Aggregation)</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Daily to Monthly (mean)</span>
+df.<span class="keyword">resample</span>(<span class="string">'MS'</span>).mean()
+
+<span class="comment"># Daily to Monthly (sum)</span>
+df.<span class="keyword">resample</span>(<span class="string">'MS'</span>).sum()
+
+<span class="comment"># Custom aggregation</span>
+df.<span class="keyword">resample</span>(<span class="string">'W'</span>).agg([<span class="string">'mean'</span>, <span class="string">'max'</span>])
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Upsampling (Fill Methods)</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Business to Calendar days</span>
+df.<span class="keyword">resample</span>(<span class="string">'D'</span>).asfreq()
+
+<span class="comment"># Forward fill</span>
+df.<span class="keyword">resample</span>(<span class="string">'D'</span>).ffill()
+
+<span class="comment"># Backward fill</span>
+df.<span class="keyword">resample</span>(<span class="string">'D'</span>).bfill()
+                    </div>
+                </div>
+            </div>
+
+            <div class="explanation" style="margin-top: 30px;">
+                <h3>📅 Common Frequency Aliases</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div class="info-badge">D - Daily</div>
+                    <div class="info-badge">W - Weekly</div>
+                    <div class="info-badge">MS - Month Start</div>
+                    <div class="info-badge">M - Month End</div>
+                    <div class="info-badge">YS - Year Start</div>
+                    <div class="info-badge">Y - Year End</div>
+                    <div class="info-badge">H - Hourly</div>
+                    <div class="info-badge">T - Minutely</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Rolling Windows -->
+        <div id="rolling" class="tab-content">
+            <div class="explanation">
+                <h3>📊 Rolling Windows</h3>
+                <p>
+                    Rolling windows allow you to calculate statistics over a sliding window of data. This is perfect for
+                    computing moving averages, rolling sums, or any other metric that needs to consider neighboring data points.
+                </p>
+            </div>
+
+            <div class="rolling-window" id="rollingDemo">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <div class="slider-container">
+                <label for="windowSize" style="font-weight: 600; color: #667eea; display: block; margin-bottom: 10px;">
+                    Window Size: <span id="windowSizeLabel">3</span> days
+                </label>
+                <input type="range" id="windowSize" class="slider" min="2" max="7" value="3"
+                       oninput="updateRollingWindow(this.value)">
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" onclick="animateRollingWindow()">
+                    ▶️ Animate Rolling Window
+                </button>
+                <button class="btn-secondary" onclick="stopAnimation()">
+                    ⏸️ Stop
+                </button>
+                <button class="btn-success" onclick="resetRollingDemo()">
+                    🔄 Reset
+                </button>
+            </div>
+
+            <div class="output-box" id="rollingOutput">
+                <h4>📊 Current Window Calculation:</h4>
+                <pre id="rollingText">Adjust the slider or click animate to see rolling window in action...</pre>
+            </div>
+
+            <div class="explanation">
+                <h3>💻 Code Examples</h3>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Moving Average</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># 30-day moving average</span>
+price[<span class="string">'AAPL'</span>].<span class="keyword">rolling</span>(<span class="number">30</span>).mean()
+
+<span class="comment"># With minimum periods</span>
+price[<span class="string">'AAPL'</span>].<span class="keyword">rolling</span>(<span class="number">30</span>,
+      min_periods=<span class="number">3</span>).mean()
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Other Statistics</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Rolling sum</span>
+df.<span class="keyword">rolling</span>(<span class="number">7</span>).sum()
+
+<span class="comment"># Rolling standard deviation</span>
+df.<span class="keyword">rolling</span>(<span class="number">7</span>).std()
+
+<span class="comment"># Rolling max/min</span>
+df.<span class="keyword">rolling</span>(<span class="number">7</span>).max()
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Custom Functions</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Apply custom function</span>
+<span class="keyword">def</span> <span class="keyword">custom_func</span>(x):
+    <span class="keyword">return</span> x.max() - x.min()
+
+df.<span class="keyword">rolling</span>(<span class="number">7</span>).apply(custom_func)
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <h4 style="color: #667eea;">Window Types</h4>
+                    <div class="code-example" style="margin-top: 15px;">
+<span class="comment"># Time-based window</span>
+df.<span class="keyword">rolling</span>(<span class="string">'7D'</span>).mean()
+
+<span class="comment"># Center the window</span>
+df.<span class="keyword">rolling</span>(<span class="number">7</span>, center=<span class="keyword">True</span>).mean()
+                    </div>
+                </div>
+            </div>
+
+            <div class="output-box">
+                <h4>💡 Key Concepts:</h4>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li>✅ <strong>Window size</strong> - Number of observations to include</li>
+                    <li>✅ <strong>min_periods</strong> - Minimum observations needed (default = window size)</li>
+                    <li>✅ <strong>Aggregation</strong> - Any statistical function (mean, sum, std, etc.)</li>
+                    <li>✅ <strong>Use case</strong> - Smooth out noise, identify trends, detect patterns</li>
+                    <li>✅ <strong>Common application</strong> - Moving averages in stock prices, weather data</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <p style="color: #666;">
+                <strong>💡 Pro Tip:</strong> Time series operations in pandas are optimized for performance and
+                integrate seamlessly with visualization libraries like matplotlib and plotly!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let animationInterval = null;
+        let currentWindowPosition = 0;
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Initialize Basic Timeline
+        function initBasicTimeline() {
+            const timeline = document.getElementById('basicTimeline');
+            const dates = [];
+            for (let i = 2; i <= 12; i += 2) {
+                dates.push(new Date(2011, 0, i));
+            }
+
+            dates.forEach((date, idx) => {
+                const marker = document.createElement('div');
+                marker.className = 'date-marker';
+                marker.style.left = `${10 + (idx * 15)}%`;
+
+                const label = document.createElement('div');
+                label.className = 'date-label';
+                label.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                marker.appendChild(label);
+
+                marker.title = date.toISOString().split('T')[0];
+                timeline.appendChild(marker);
+            });
+        }
+
+        // Slicing demonstrations
+        function createSlicingChart() {
+            const chart = document.getElementById('slicingChart');
+            chart.innerHTML = '';
+
+            for (let i = 0; i < 36; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.left = `${30 + (i * 15)}px`;
+                bar.style.height = `${100 + Math.random() * 150}px`;
+                bar.dataset.index = i;
+                bar.dataset.year = i < 12 ? '2000' : i < 24 ? '2001' : '2002';
+                bar.dataset.month = (i % 12) + 1;
+                chart.appendChild(bar);
+            }
+        }
+
+        function sliceYear() {
+            const bars = document.querySelectorAll('#slicingChart .bar');
+            bars.forEach(bar => {
+                bar.style.background = bar.dataset.year === '2001' ?
+                    'linear-gradient(180deg, #f5576c 0%, #f093fb 100%)' :
+                    'linear-gradient(180deg, #667eea 0%, #764ba2 100%)';
+            });
+
+            document.getElementById('slicingText').textContent = `ts['2001']
+
+Result: All data for the entire year 2001
+
+Length: 365 observations
+Start: 2001-01-01
+End: 2001-12-31
+
+This selects ALL observations where the year is 2001,
+regardless of month or day!`;
+        }
+
+        function sliceMonth() {
+            const bars = document.querySelectorAll('#slicingChart .bar');
+            bars.forEach(bar => {
+                bar.style.background = (bar.dataset.year === '2001' && bar.dataset.month === '5') ?
+                    'linear-gradient(180deg, #f5576c 0%, #f093fb 100%)' :
+                    'linear-gradient(180deg, #667eea 0%, #764ba2 100%)';
+            });
+
+            document.getElementById('slicingText').textContent = `ts['2001-05']
+
+Result: All data for May 2001
+
+Length: 31 observations
+Start: 2001-05-01
+End: 2001-05-31
+
+This selects ALL observations in May 2001.
+You can use any year-month combination!`;
+        }
+
+        function sliceRange() {
+            const bars = document.querySelectorAll('#slicingChart .bar');
+            bars.forEach(bar => {
+                const inRange = bar.dataset.year === '2001' &&
+                               parseInt(bar.dataset.month) >= 5 &&
+                               parseInt(bar.dataset.month) <= 8;
+                bar.style.background = inRange ?
+                    'linear-gradient(180deg, #f5576c 0%, #f093fb 100%)' :
+                    'linear-gradient(180deg, #667eea 0%, #764ba2 100%)';
+            });
+
+            document.getElementById('slicingText').textContent = `ts['2001-05':'2001-08']
+
+Result: All data from May through August 2001
+
+Length: 123 observations (4 months)
+Start: 2001-05-01
+End: 2001-08-31
+
+Range slicing is INCLUSIVE on both ends!
+This selects May, June, July, AND August.`;
+        }
+
+        function resetSlicing() {
+            const bars = document.querySelectorAll('#slicingChart .bar');
+            bars.forEach(bar => {
+                bar.style.background = 'linear-gradient(180deg, #667eea 0%, #764ba2 100%)';
+            });
+            document.getElementById('slicingText').textContent = 'Click a button above to see slicing in action...';
+        }
+
+        // Resampling demonstrations
+        function initFrequencyDemo() {
+            // Daily bars
+            const dailyContainer = document.getElementById('dailyBars');
+            for (let i = 0; i < 15; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'freq-bar';
+                bar.style.height = `${30 + Math.random() * 70}px`;
+                dailyContainer.appendChild(bar);
+            }
+
+            // Weekly bars (aggregated)
+            const weeklyContainer = document.getElementById('weeklyBars');
+            for (let i = 0; i < 4; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'freq-bar';
+                bar.style.height = `${50 + Math.random() * 50}px`;
+                bar.style.width = '30px';
+                weeklyContainer.appendChild(bar);
+            }
+
+            // Monthly bar (single)
+            const monthlyContainer = document.getElementById('monthlyBars');
+            const bar = document.createElement('div');
+            bar.className = 'freq-bar';
+            bar.style.height = '80px';
+            bar.style.width = '60px';
+            monthlyContainer.appendChild(bar);
+        }
+
+        function demonstrateUpsample() {
+            document.getElementById('resampleText').textContent = `price.resample('D').ffill()
+
+Original: Business days only (Mon-Fri)
+Number of observations: ~252 per year
+
+After Upsampling to Daily ('D'):
+Number of observations: 365 per year
+
+Fill Method: Forward fill (ffill)
+- Weekends get filled with Friday's value
+- Creates continuous daily series
+
+Example:
+2023-01-05 (Thu): 150.00
+2023-01-06 (Fri): 152.00
+2023-01-07 (Sat): 152.00  ← filled
+2023-01-08 (Sun): 152.00  ← filled
+2023-01-09 (Mon): 155.00`;
+        }
+
+        function demonstrateDownsample() {
+            document.getElementById('resampleText').textContent = `price.resample('MS').mean()
+
+Original: Daily data
+Number of observations: 365 per year
+
+After Downsampling to Monthly ('MS'):
+Number of observations: 12 per year
+
+Aggregation: mean() - average of all daily values
+
+Example Month (May 2023):
+Daily: [145, 147, 146, 148, ..., 150]  (31 values)
+Monthly: 147.5  (mean of all 31 daily values)
+
+Other common aggregations:
+- .sum() for totals
+- .max() / .min() for extremes
+- .first() / .last() for endpoints`;
+        }
+
+        function demonstrateFillMethods() {
+            document.getElementById('resampleText').textContent = `Fill Methods for Upsampling:
+
+1. asfreq() - No fill (leaves NaN)
+   2023-01-05: 150.00
+   2023-01-06: NaN  ← no data
+   2023-01-07: 152.00
+
+2. ffill() - Forward fill
+   2023-01-05: 150.00
+   2023-01-06: 150.00  ← copied forward
+   2023-01-07: 152.00
+
+3. bfill() - Backward fill
+   2023-01-05: 150.00
+   2023-01-06: 152.00  ← copied backward
+   2023-01-07: 152.00
+
+4. interpolate() - Linear interpolation
+   2023-01-05: 150.00
+   2023-01-06: 151.00  ← calculated
+   2023-01-07: 152.00`;
+        }
+
+        // Rolling window demonstrations
+        function initRollingDemo() {
+            const container = document.getElementById('rollingDemo');
+            container.innerHTML = '';
+
+            const values = [12, 15, 13, 18, 20, 17, 14, 16, 19, 21];
+
+            values.forEach((val, idx) => {
+                const point = document.createElement('div');
+                point.className = 'data-point';
+                point.textContent = val;
+                point.style.left = `${50 + (idx * 60)}px`;
+                point.style.bottom = `${50}px`;
+                point.dataset.index = idx;
+                point.dataset.value = val;
+                container.appendChild(point);
+            });
+
+            // Add window highlight
+            const windowHighlight = document.createElement('div');
+            windowHighlight.id = 'windowHighlight';
+            windowHighlight.className = 'window-highlight';
+            windowHighlight.style.display = 'none';
+            container.appendChild(windowHighlight);
+        }
+
+        function updateRollingWindow(size) {
+            document.getElementById('windowSizeLabel').textContent = size;
+            const points = document.querySelectorAll('#rollingDemo .data-point');
+            const windowSize = parseInt(size);
+
+            points.forEach((point, idx) => {
+                point.classList.remove('in-window');
+                if (idx < windowSize) {
+                    point.classList.add('in-window');
+                }
+            });
+
+            const highlight = document.getElementById('windowHighlight');
+            if (highlight) {
+                highlight.style.display = 'block';
+                highlight.style.left = '35px';
+                highlight.style.bottom = '35px';
+                highlight.style.width = `${windowSize * 60}px`;
+                highlight.style.height = '60px';
+            }
+
+            const values = Array.from(points).slice(0, windowSize).map(p => parseFloat(p.dataset.value));
+            const mean = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2);
+
+            document.getElementById('rollingText').textContent = `Current Window: First ${windowSize} observations
+
+Values in window: [${values.join(', ')}]
+
+Calculation:
+Mean = (${values.join(' + ')}) / ${windowSize}
+     = ${mean}
+
+This window will slide across all data points,
+calculating the mean at each position.`;
+        }
+
+        function animateRollingWindow() {
+            stopAnimation();
+            const points = document.querySelectorAll('#rollingDemo .data-point');
+            const windowSize = parseInt(document.getElementById('windowSize').value);
+            currentWindowPosition = 0;
+
+            animationInterval = setInterval(() => {
+                if (currentWindowPosition > points.length - windowSize) {
+                    stopAnimation();
+                    return;
+                }
+
+                points.forEach((point, idx) => {
+                    point.classList.remove('in-window');
+                    if (idx >= currentWindowPosition && idx < currentWindowPosition + windowSize) {
+                        point.classList.add('in-window');
+                    }
+                });
+
+                const highlight = document.getElementById('windowHighlight');
+                if (highlight) {
+                    highlight.style.display = 'block';
+                    highlight.style.left = `${35 + (currentWindowPosition * 60)}px`;
+                    highlight.style.bottom = '35px';
+                    highlight.style.width = `${windowSize * 60}px`;
+                    highlight.style.height = '60px';
+                }
+
+                const values = Array.from(points)
+                    .slice(currentWindowPosition, currentWindowPosition + windowSize)
+                    .map(p => parseFloat(p.dataset.value));
+                const mean = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2);
+
+                document.getElementById('rollingText').textContent = `Rolling Window Position: ${currentWindowPosition + 1}
+
+Values in window: [${values.join(', ')}]
+
+Mean = ${mean}
+
+Window is sliding from left to right,
+calculating the ${windowSize}-observation mean at each step.`;
+
+                currentWindowPosition++;
+            }, 1000);
+        }
+
+        function stopAnimation() {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+        }
+
+        function resetRollingDemo() {
+            stopAnimation();
+            document.getElementById('windowSize').value = 3;
+            updateRollingWindow(3);
+        }
+
+        // Initialize everything
+        window.onload = function() {
+            initBasicTimeline();
+            createSlicingChart();
+            initFrequencyDemo();
+            initRollingDemo();
+            updateRollingWindow(3);
+        };
+    </script>
+</body>
+</html>
