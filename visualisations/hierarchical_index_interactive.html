@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Hierarchical Index Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .explanation {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+
+        .explanation h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .comparison-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .comparison-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .comparison-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .level-0-index {
+            background: #ffebee;
+            font-weight: 600;
+            color: #c62828;
+        }
+
+        .level-1-index {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .level-0-col {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .level-1-col {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        td.data-cell {
+            background: white;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        td.data-cell:hover {
+            background: #fff9c4;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .highlight-row {
+            background: #fff3cd !important;
+            border: 3px solid #ffc107 !important;
+        }
+
+        .highlight-col {
+            background: #cfe2ff !important;
+            border: 3px solid #0d6efd !important;
+        }
+
+        .highlight-cell {
+            background: #d1e7dd !important;
+            border: 3px solid #198754 !important;
+            transform: scale(1.1);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .output-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #28a745;
+            min-height: 100px;
+        }
+
+        .output-box h4 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .output-box pre {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #dee2e6;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 2px solid #333;
+        }
+
+        .code-example {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .code-example .keyword {
+            color: #c678dd;
+        }
+
+        .code-example .string {
+            color: #98c379;
+        }
+
+        .code-example .number {
+            color: #d19a66;
+        }
+
+        .code-example .comment {
+            color: #5c6370;
+            font-style: italic;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .animate-pulse {
+            animation: pulse 1s ease-in-out;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Interactive Hierarchical Index (MultiIndex)</h1>
+        <p class="subtitle">Explore how pandas handles multi-dimensional data in 2D structures</p>
+
+        <div class="explanation">
+            <h3>💡 What is Hierarchical Indexing?</h3>
+            <p>
+                Hierarchical indexing (MultiIndex) allows you to have <strong>multiple index levels</strong> on an axis.
+                It's like organizing a library with categories, subcategories, and books - you can navigate at any level!
+                This enables you to work with higher dimensional data (3D, 4D, etc.) in a familiar 2D DataFrame structure.
+            </p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('concept')">📚 Concept</button>
+            <button class="tab" onclick="switchTab('selection')">🎯 Selection</button>
+            <button class="tab" onclick="switchTab('operations')">⚙️ Operations</button>
+        </div>
+
+        <!-- Tab 1: Concept -->
+        <div id="concept" class="tab-content active">
+            <div class="comparison-container">
+                <div class="comparison-box">
+                    <h3>❌ Regular Index (Flat)</h3>
+                    <table>
+                        <tr>
+                            <th>Index</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr>
+                            <td>Item_1</td>
+                            <td class="data-cell">42</td>
+                        </tr>
+                        <tr>
+                            <td>Item_2</td>
+                            <td class="data-cell">87</td>
+                        </tr>
+                        <tr>
+                            <td>Item_3</td>
+                            <td class="data-cell">23</td>
+                        </tr>
+                    </table>
+                    <p style="text-align: center; color: #666; margin-top: 10px;">
+                        <strong>One level</strong> - Can only access by exact key
+                    </p>
+                </div>
+
+                <div class="comparison-box">
+                    <h3>✅ Hierarchical Index (MultiIndex)</h3>
+                    <table>
+                        <tr>
+                            <th>Level 0</th>
+                            <th>Level 1</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr>
+                            <td class="level-0-index">Category A</td>
+                            <td class="level-1-index">1</td>
+                            <td class="data-cell">42</td>
+                        </tr>
+                        <tr>
+                            <td class="level-0-index">Category A</td>
+                            <td class="level-1-index">2</td>
+                            <td class="data-cell">87</td>
+                        </tr>
+                        <tr>
+                            <td class="level-0-index">Category B</td>
+                            <td class="level-1-index">1</td>
+                            <td class="data-cell">23</td>
+                        </tr>
+                    </table>
+                    <p style="text-align: center; color: #666; margin-top: 10px;">
+                        <strong>Multiple levels</strong> - Can access by outer level, inner level, or both!
+                    </p>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>🏗️ Visual Structure</h3>
+                <p>Below is an interactive DataFrame with hierarchical indexes on BOTH axes (rows AND columns):</p>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffebee;"></div>
+                        <span><strong>Row Level 0</strong> (Outer)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e3f2fd;"></div>
+                        <span><strong>Row Level 1</strong> (Inner)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f3e5f5;"></div>
+                        <span><strong>Column Level 0</strong> (State)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e8f5e9;"></div>
+                        <span><strong>Column Level 1</strong> (Color)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="mainTable">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" colspan="2">Indexes</th>
+                            <th colspan="2" class="level-0-col">Ohio</th>
+                            <th class="level-0-col">Colorado</th>
+                        </tr>
+                        <tr>
+                            <th class="level-1-col">Green</th>
+                            <th class="level-1-col">Red</th>
+                            <th class="level-1-col">Green</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="2" class="level-0-index">key1: a</td>
+                            <td class="level-1-index">key2: 1</td>
+                            <td class="data-cell" data-row="a,1" data-col="Ohio,Green">0</td>
+                            <td class="data-cell" data-row="a,1" data-col="Ohio,Red">1</td>
+                            <td class="data-cell" data-row="a,1" data-col="Colorado,Green">2</td>
+                        </tr>
+                        <tr>
+                            <td class="level-1-index">key2: 2</td>
+                            <td class="data-cell" data-row="a,2" data-col="Ohio,Green">3</td>
+                            <td class="data-cell" data-row="a,2" data-col="Ohio,Red">4</td>
+                            <td class="data-cell" data-row="a,2" data-col="Colorado,Green">5</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="2" class="level-0-index">key1: b</td>
+                            <td class="level-1-index">key2: 1</td>
+                            <td class="data-cell" data-row="b,1" data-col="Ohio,Green">6</td>
+                            <td class="data-cell" data-row="b,1" data-col="Ohio,Red">7</td>
+                            <td class="data-cell" data-row="b,1" data-col="Colorado,Green">8</td>
+                        </tr>
+                        <tr>
+                            <td class="level-1-index">key2: 2</td>
+                            <td class="data-cell" data-row="b,2" data-col="Ohio,Green">9</td>
+                            <td class="data-cell" data-row="b,2" data-col="Ohio,Red">10</td>
+                            <td class="data-cell" data-row="b,2" data-col="Colorado,Green">11</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="code-example">
+<span class="comment"># Creating a hierarchical index DataFrame</span>
+frame = pd.<span class="keyword">DataFrame</span>(
+    np.arange(<span class="number">12</span>).reshape((<span class="number">4</span>, <span class="number">3</span>)),
+    index=[[<span class="string">'a'</span>, <span class="string">'a'</span>, <span class="string">'b'</span>, <span class="string">'b'</span>], [<span class="number">1</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">2</span>]],
+    columns=[[<span class="string">'Ohio'</span>, <span class="string">'Ohio'</span>, <span class="string">'Colorado'</span>], [<span class="string">'Green'</span>, <span class="string">'Red'</span>, <span class="string">'Green'</span>]]
+)
+frame.index.names = [<span class="string">'key1'</span>, <span class="string">'key2'</span>]
+frame.columns.names = [<span class="string">'state'</span>, <span class="string">'color'</span>]
+            </div>
+        </div>
+
+        <!-- Tab 2: Selection -->
+        <div id="selection" class="tab-content">
+            <div class="explanation">
+                <h3>🎯 Selection Methods</h3>
+                <p>Click the buttons below to see different ways to select data from a hierarchical index:</p>
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" onclick="selectOuterIndex()">
+                    Select Outer Level: <code>frame.loc['a']</code>
+                </button>
+                <button class="btn-secondary" onclick="selectInnerIndex()">
+                    Select Inner Level: <code>frame.loc[:, 1]</code>
+                </button>
+                <button class="btn-success" onclick="selectBothLevels()">
+                    Select Both: <code>frame.loc[('a', 1)]</code>
+                </button>
+                <button class="btn-primary" onclick="selectColumn()">
+                    Select Column: <code>frame['Ohio']</code>
+                </button>
+                <button class="btn-secondary" onclick="selectSpecificCell()">
+                    Specific Cell: <code>frame.loc[('a', 1), ('Ohio', 'Green')]</code>
+                </button>
+                <button class="btn-success" onclick="resetSelection()">
+                    🔄 Reset
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table id="selectionTable">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" colspan="2">Indexes</th>
+                            <th colspan="2" class="level-0-col">Ohio</th>
+                            <th class="level-0-col">Colorado</th>
+                        </tr>
+                        <tr>
+                            <th class="level-1-col">Green</th>
+                            <th class="level-1-col">Red</th>
+                            <th class="level-1-col">Green</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-outer="a" data-inner="1">
+                            <td rowspan="2" class="level-0-index">key1: a</td>
+                            <td class="level-1-index">key2: 1</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Green">0</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Red">1</td>
+                            <td class="data-cell" data-state="Colorado" data-color="Green">2</td>
+                        </tr>
+                        <tr data-outer="a" data-inner="2">
+                            <td class="level-1-index">key2: 2</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Green">3</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Red">4</td>
+                            <td class="data-cell" data-state="Colorado" data-color="Green">5</td>
+                        </tr>
+                        <tr data-outer="b" data-inner="1">
+                            <td rowspan="2" class="level-0-index">key1: b</td>
+                            <td class="level-1-index">key2: 1</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Green">6</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Red">7</td>
+                            <td class="data-cell" data-state="Colorado" data-color="Green">8</td>
+                        </tr>
+                        <tr data-outer="b" data-inner="2">
+                            <td class="level-1-index">key2: 2</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Green">9</td>
+                            <td class="data-cell" data-state="Ohio" data-color="Red">10</td>
+                            <td class="data-cell" data-state="Colorado" data-color="Green">11</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="output-box" id="outputBox">
+                <h4>📊 Selection Result:</h4>
+                <pre id="outputText">Click a button above to see selection results...</pre>
+            </div>
+        </div>
+
+        <!-- Tab 3: Operations -->
+        <div id="operations" class="tab-content">
+            <div class="explanation">
+                <h3>⚙️ Common Operations</h3>
+                <p>Hierarchical indexes support many useful operations:</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="comparison-box">
+                    <h3>🔄 Swap Levels</h3>
+                    <p>Exchange the order of index levels</p>
+                    <div class="code-example" style="margin-top: 15px;">
+frame.<span class="keyword">swaplevel</span>(<span class="string">'key1'</span>, <span class="string">'key2'</span>)
+                    </div>
+                    <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="demonstrateSwapLevel()">
+                        See Example
+                    </button>
+                </div>
+
+                <div class="comparison-box">
+                    <h3>📊 Sort Index</h3>
+                    <p>Sort by index levels</p>
+                    <div class="code-example" style="margin-top: 15px;">
+frame.<span class="keyword">sort_index</span>(level=<span class="number">1</span>)
+                    </div>
+                    <button class="btn-secondary" style="width: 100%; margin-top: 15px;" onclick="demonstrateSortIndex()">
+                        See Example
+                    </button>
+                </div>
+
+                <div class="comparison-box">
+                    <h3>📈 Group By Level</h3>
+                    <p>Aggregate data by specific level</p>
+                    <div class="code-example" style="margin-top: 15px;">
+frame.<span class="keyword">groupby</span>(level=<span class="string">'key1'</span>).sum()
+                    </div>
+                    <button class="btn-success" style="width: 100%; margin-top: 15px;" onclick="demonstrateGroupBy()">
+                        See Example
+                    </button>
+                </div>
+
+                <div class="comparison-box">
+                    <h3>🎨 Cross Section</h3>
+                    <p>Select single level value (xs)</p>
+                    <div class="code-example" style="margin-top: 15px;">
+frame.<span class="keyword">xs</span>(<span class="string">'a'</span>, level=<span class="string">'key1'</span>)
+                    </div>
+                    <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="demonstrateXS()">
+                        See Example
+                    </button>
+                </div>
+            </div>
+
+            <div class="output-box" id="operationsOutput" style="margin-top: 30px;">
+                <h4>📊 Operation Result:</h4>
+                <pre id="operationsText">Click a button above to see operation results...</pre>
+            </div>
+
+            <div class="explanation" style="margin-top: 30px;">
+                <h3>💡 Key Takeaways</h3>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li>✅ <strong>Partial Indexing:</strong> Select all data for an outer level key</li>
+                    <li>✅ <strong>Multi-level Selection:</strong> Navigate through any level of hierarchy</li>
+                    <li>✅ <strong>Reshape Operations:</strong> Stack, unstack, pivot with ease</li>
+                    <li>✅ <strong>Efficient Storage:</strong> Represent higher dimensional data in 2D</li>
+                    <li>✅ <strong>Flexible Grouping:</strong> Aggregate by any level or combination of levels</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <p style="color: #666;">
+                <strong>💡 Pro Tip:</strong> Hierarchical indexing is especially useful for time series data,
+                panel data, and any multi-dimensional dataset that needs to be stored efficiently!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Selection functions
+        function resetSelection() {
+            document.querySelectorAll('#selectionTable td').forEach(cell => {
+                cell.classList.remove('highlight-row', 'highlight-col', 'highlight-cell');
+            });
+            document.getElementById('outputText').textContent = 'Click a button above to see selection results...';
+        }
+
+        function selectOuterIndex() {
+            resetSelection();
+            document.querySelectorAll('#selectionTable tr[data-outer="a"] td').forEach(cell => {
+                cell.classList.add('highlight-row');
+            });
+
+            const output = `frame.loc['a']
+
+Result: All rows where key1 = 'a'
+
+state     Ohio      Colorado
+color    Green Red     Green
+key2
+1            0   1         2
+2            3   4         5
+
+This selects ALL rows with outer index 'a', regardless of inner index value!`;
+
+            document.getElementById('outputText').textContent = output;
+        }
+
+        function selectInnerIndex() {
+            resetSelection();
+            document.querySelectorAll('#selectionTable tr[data-inner="1"] td').forEach(cell => {
+                cell.classList.add('highlight-row');
+            });
+
+            const output = `frame.xs(1, level='key2')
+
+Result: All rows where key2 = 1
+
+state   Ohio      Colorado
+color  Green Red     Green
+key1
+a          0   1         2
+b          6   7         8
+
+This selects ALL rows with inner index '1', across all outer index values!`;
+
+            document.getElementById('outputText').textContent = output;
+        }
+
+        function selectBothLevels() {
+            resetSelection();
+            document.querySelectorAll('#selectionTable tr[data-outer="a"][data-inner="1"] td').forEach(cell => {
+                cell.classList.add('highlight-row');
+            });
+
+            const output = `frame.loc[('a', 1)]
+
+Result: Single row where key1='a' AND key2=1
+
+state  color
+Ohio   Green    0
+       Red      1
+Colorado Green  2
+Name: (a, 1), dtype: int64
+
+This selects the EXACT row matching both index levels!`;
+
+            document.getElementById('outputText').textContent = output;
+        }
+
+        function selectColumn() {
+            resetSelection();
+            document.querySelectorAll('#selectionTable td[data-state="Ohio"]').forEach(cell => {
+                cell.classList.add('highlight-col');
+            });
+
+            const output = `frame['Ohio']
+
+Result: All columns with state='Ohio'
+
+color      Green  Red
+key1 key2
+a    1         0    1
+     2         3    4
+b    1         6    7
+     2         9   10
+
+This selects ALL columns under 'Ohio', preserving the color sub-level!`;
+
+            document.getElementById('outputText').textContent = output;
+        }
+
+        function selectSpecificCell() {
+            resetSelection();
+            const rows = document.querySelectorAll('#selectionTable tr[data-outer="a"][data-inner="1"]');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td[data-state="Ohio"][data-color="Green"]');
+                cells.forEach(cell => {
+                    cell.classList.add('highlight-cell');
+                });
+            });
+
+            const output = `frame.loc[('a', 1), ('Ohio', 'Green')]
+
+Result: Single value at specific row and column
+
+0
+
+This selects the EXACT cell at the intersection of:
+- Row: key1='a', key2=1
+- Column: state='Ohio', color='Green'`;
+
+            document.getElementById('outputText').textContent = output;
+        }
+
+        // Operations demonstrations
+        function demonstrateSwapLevel() {
+            const output = `Original index order: (key1, key2)
+
+     a  1    [data]
+        2    [data]
+     b  1    [data]
+        2    [data]
+
+After swaplevel('key1', 'key2'):
+
+     1  a    [data]
+     2  a    [data]
+     1  b    [data]
+     2  b    [data]
+
+The levels are swapped! Now key2 is outer, key1 is inner.
+This is useful for reorganizing your data hierarchy.`;
+
+            document.getElementById('operationsText').textContent = output;
+        }
+
+        function demonstrateSortIndex() {
+            const output = `Original (sorted by key1 first, then key2):
+
+a  1    [0, 1, 2]
+   2    [3, 4, 5]
+b  1    [6, 7, 8]
+   2    [9, 10, 11]
+
+After sort_index(level='key2'):
+
+a  1    [0, 1, 2]
+b  1    [6, 7, 8]
+a  2    [3, 4, 5]
+b  2    [9, 10, 11]
+
+Now sorted by key2 first! All '1' values together, then '2' values.`;
+
+            document.getElementById('operationsText').textContent = output;
+        }
+
+        function demonstrateGroupBy() {
+            const output = `Original data has 4 rows (a-1, a-2, b-1, b-2)
+
+frame.groupby(level='key1').sum()
+
+Result - Aggregated by outer level:
+
+state     Ohio      Colorado
+color    Green Red     Green
+key1
+a            3   5         7    (sum of rows a-1 and a-2)
+b           15  17        19    (sum of rows b-1 and b-2)
+
+This groups all rows with same key1 and sums their values!`;
+
+            document.getElementById('operationsText').textContent = output;
+        }
+
+        function demonstrateXS() {
+            const output = `frame.xs('a', level='key1')
+
+Result - Cross-section at key1='a':
+
+state     Ohio      Colorado
+color    Green Red     Green
+key2
+1            0   1         2
+2            3   4         5
+
+The 'xs' method returns a cross-section (subset) of the data
+at the specified level value. Similar to .loc['a'] but cleaner!`;
+
+            document.getElementById('operationsText').textContent = output;
+        }
+
+        // Add hover effect to data cells in main table
+        document.querySelectorAll('#mainTable .data-cell').forEach(cell => {
+            cell.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.15)';
+                this.style.zIndex = '10';
+            });
+
+            cell.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.zIndex = '1';
+            });
+        });
+
+        // Add click info to cells
+        document.querySelectorAll('#mainTable .data-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                const row = this.getAttribute('data-row');
+                const col = this.getAttribute('data-col');
+                alert(`Cell Location:\nRow Index: (${row})\nColumn Index: (${col})\nValue: ${this.textContent}\n\nAccess with: frame.loc[(${row.replace(',', ', ')}), (${col.replace(',', ', ')})]`);
+            });
+        });
+    </script>
+</body>
+</html>
